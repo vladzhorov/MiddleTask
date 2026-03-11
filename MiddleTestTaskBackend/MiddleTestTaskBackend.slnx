@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="../API/API/API.csproj" />
+  <Project Path="../Core/Core/Core.csproj" />
+  <Project Path="../DataIngestorService/DataIngestorService/DataIngestorService.csproj" />
+  <Project Path="../DataProccesor/DataProccesor/DataProccesor.csproj" />
+</Solution>

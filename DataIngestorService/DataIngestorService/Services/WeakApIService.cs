@@ -1,4 +1,4 @@
-﻿using Core.Models;
+using Core.Models;
 using DataIngestorService.Services.Interfaces;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
@@ -21,7 +21,16 @@ namespace DataIngestorService.Services
             try
             {
                 var apiUrl = _weakApiOptions.Value.Url;
-                return await _httpClient.GetFromJsonAsync<Metrics>(apiUrl);
+                var apiKey = _weakApiOptions.Value.ApiKey;
+
+                using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
+                request.Headers.Add("X-Api-Key", apiKey);
+
+                using var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var metrics = await response.Content.ReadFromJsonAsync<Metrics>();
+                return metrics;
             }
             catch (HttpRequestException ex)
             {

@@ -1,8 +1,20 @@
-﻿using DataProccesor.Exstentions;
+using DataProccesor.Exstentions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Configuration;
+using Serilog;
 
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(new ConfigurationBuilder()
+        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+        .AddEnvironmentVariables()
+        .Build())
+    .WriteTo.Console()
+    .CreateLogger();
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
 builder.Services.AddMongoDependensies(builder.Configuration);
 

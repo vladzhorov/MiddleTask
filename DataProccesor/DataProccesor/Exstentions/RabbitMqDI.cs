@@ -1,8 +1,9 @@
-﻿using Core.Models;
+using Core.Models;
 using DataProccesor.Сonsumers;
 using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace DataProccesor.Exstentions
 {
@@ -10,13 +11,23 @@ namespace DataProccesor.Exstentions
     {
         public static void AddRabbitMQDependensies(this IServiceCollection services, IConfiguration configuration)
         {
+            services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMq"));
+
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<MetricConsumer>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
-                    cfg.Host("localhost", h => { });
+                    var rabbitOptions = context
+                        .GetRequiredService<IOptions<RabbitMqOptions>>()
+                        .Value;
+
+                    cfg.Host(rabbitOptions.Host, h =>
+                    {
+                        h.Username(rabbitOptions.UserName);
+                        h.Password(rabbitOptions.Password);
+                    });
 
                     cfg.ReceiveEndpoint("processor-metrics-queue", e =>
                     {

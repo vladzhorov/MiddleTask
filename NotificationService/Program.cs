@@ -1,8 +1,8 @@
-using API.GraphQL;
-using API.Repositories;
-using API.Extensions;
-using Serilog;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;
+using NotificationService.Extensions;
+using NotificationService.Hubs;
+using Serilog;
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
@@ -17,23 +17,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
-builder.Services.AddMongoDependencies(builder.Configuration);
+builder.Services.AddSignalR();
 
-builder.Services.AddScoped<IMetricReadRepository, MetricReadRepository>();
-
-builder.Services.AddControllers();
-
-// GraphQL configuration
-builder.Services
-    .AddGraphQLServer()
-    .AddQueryType<Query>()
-    .AddFiltering()
-    .AddSorting()
-    .AddProjections();
+builder.Services.AddRabbitMqDependencies(builder.Configuration);
 
 var app = builder.Build();
 
-app.MapControllers();
-app.MapGraphQL("/graphql");
+app.MapHub<MetricsHub>("/hubs/metrics");
 
 app.Run();
+

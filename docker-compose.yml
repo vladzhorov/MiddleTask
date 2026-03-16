@@ -2,33 +2,79 @@ version: '3.8'
 
 services:
   weak-app:
-    build: ./WeakApp  
+    build:
+      context: ./WeakApp
+      dockerfile: Dockerfile
     container_name: weak-app
     ports:
-      - "8081:8080" 
+      - "8081:8080"
     networks:
       - app-network
 
-  # rabbitmq:
-  #   image: rabbitmq:3-management
-  #   container_name: rabbitmq
-  #   ports:
-  #     - "5672:5672" 
-  #     - "15672:15672" 
-  #   networks:
-  #     - app-network
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - app-network
 
-  ingestor-service:
-    build: ./Catcher
-    environment:
-      - ApiUrl=http://weak-app:8080
-      - ApiKey=supersecret
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+
+  data-ingestor:
+    build:
+      context: .
+      dockerfile: DataIngestorService/DataIngestorService/Dockerfile
+    container_name: data-ingestor
     depends_on:
       - weak-app
-      # - rabbitmq
+      - rabbitmq
+    networks:
+      - app-network
+
+  data-processor:
+    build:
+      context: .
+      dockerfile: DataProccesor/DataProccesor/Dockerfile
+    container_name: data-processor
+    depends_on:
+      - rabbitmq
+      - mongo
+    networks:
+      - app-network
+
+  api:
+    build:
+      context: .
+      dockerfile: API/API/Dockerfile
+    container_name: api
+    ports:
+      - "5000:8080"
+    depends_on:
+      - mongo
+    networks:
+      - app-network
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: NotificationService/Dockerfile
+    container_name: notification-service
+    ports:
+      - "5001:8080"
+    depends_on:
+      - rabbitmq
     networks:
       - app-network
 
 networks:
   app-network:
     driver: bridge
+

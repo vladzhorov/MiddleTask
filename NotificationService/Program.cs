@@ -17,11 +17,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .SetIsOriginAllowed(_ => true));
+});
+
 builder.Services.AddSignalR();
 
 builder.Services.AddRabbitMqDependencies(builder.Configuration);
 
 var app = builder.Build();
+
+app.UseCors();
 
 app.MapHub<MetricsHub>("/hubs/metrics");
 

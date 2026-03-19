@@ -27,6 +27,11 @@ public static class RabbitMqDI
                     h.Password(rabbitOptions.Password);
                 });
 
+                cfg.Publish<Metrics>(p =>
+                {
+                    p.ExchangeType = "topic";
+                });
+
                 cfg.ReceiveEndpoint("notifications-metrics-queue", e =>
                 {
                     e.Bind<Metrics>(exchange =>

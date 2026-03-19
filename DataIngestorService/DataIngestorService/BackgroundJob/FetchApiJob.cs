@@ -1,4 +1,4 @@
-﻿using Core.Models;
+using Core.Models;
 using DataIngestorService.Services.Interfaces;
 using FluentValidation;
 using MassTransit;
@@ -31,22 +31,76 @@ namespace DataIngestorService.BackgroundJob
 
         public async Task Execute(IJobExecutionContext context)
         {
-            var data = await _weakApiService.GetMetricsFromApi();
+            var metrics = await FetchAsync();
+            if (metrics is null || metrics.Count == 0)
+                return;
 
-            if (data == null) { return; }
+            var published = 0;
+            var invalid = 0;
 
-            var validator = _validator.Validate(data);
-
-            if (validator.IsValid)
+            foreach (var metric in metrics)
             {
-                await _publishEndpoint.Publish<Metrics>(data, ctx =>
+                if (metric is null)
+                    continue;
+
+                if (!IsValid(metric))
                 {
-                    ctx.SetRoutingKey(data.Type.ToLower());
-                });
+                    invalid++;
+                    continue;
+                }
+
+                if (await TryPublishAsync(metric))
+                    published++;
             }
-            else
+
+            if (published > 0 || invalid > 0)
             {
-                _logger.LogWarning("Invalid data from API");
+                _logger.LogInformation("FetchApiJob finished. Published={Published}, Invalid={Invalid}", published, invalid);
+            }
+        }
+
+        private async Task<IReadOnlyList<Metrics>?> FetchAsync()
+        {
+            try
+            {
+                return await _weakApiService.GetMetricsFromApi();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled exception while fetching metrics");
+                return null;
+            }
+        }
+
+        private bool IsValid(Metrics metric)
+        {
+            var result = _validator.Validate(metric);
+            if (result.IsValid)
+                return true;
+
+            _logger.LogWarning(
+                "Invalid metric from API. Type={Type}, Name={Name}",
+                metric.Type,
+                metric.Name);
+
+            return false;
+        }
+
+        private async Task<bool> TryPublishAsync(Metrics metric)
+        {
+            try
+            {
+                await _publishEndpoint.Publish<Metrics>(metric, ctx =>
+                {
+                    ctx.SetRoutingKey(metric.Type.ToLowerInvariant());
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to publish metric to RabbitMQ");
+                return false;
             }
         }
     }

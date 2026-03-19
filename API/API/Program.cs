@@ -17,6 +17,16 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger, dispose: true);
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .SetIsOriginAllowed(_ => true));
+});
+
 builder.Services.AddMongoDependencies(builder.Configuration);
 
 builder.Services.AddScoped<IMetricReadRepository, MetricReadRepository>();
@@ -32,6 +42,8 @@ builder.Services
     .AddProjections();
 
 var app = builder.Build();
+
+app.UseCors();
 
 app.MapControllers();
 app.MapGraphQL("/graphql");

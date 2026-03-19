@@ -56,7 +56,7 @@ services:
       dockerfile: API/API/Dockerfile
     container_name: api
     ports:
-      - "5000:8080"
+      - "5050:8080"
     depends_on:
       - mongo
     networks:
@@ -71,6 +71,19 @@ services:
       - "5001:8080"
     depends_on:
       - rabbitmq
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+      - notification-service
     networks:
       - app-network
 

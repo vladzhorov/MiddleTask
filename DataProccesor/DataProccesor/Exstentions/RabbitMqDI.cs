@@ -29,6 +29,11 @@ namespace DataProccesor.Exstentions
                         h.Password(rabbitOptions.Password);
                     });
 
+                    cfg.Publish<Metrics>(p =>
+                    {
+                        p.ExchangeType = "topic";
+                    });
+
                     cfg.ReceiveEndpoint("processor-metrics-queue", e =>
                     {
                         e.Bind<Metrics>(exchange =>

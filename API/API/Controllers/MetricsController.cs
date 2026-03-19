@@ -17,9 +17,23 @@ public class MetricsController : ControllerBase
     }
 
     [HttpGet]
-    public ActionResult<IQueryable<MetricDocument>> GetMetrics()
+    public async Task<ActionResult<IReadOnlyList<MetricDocument>>> GetMetrics(
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 100)
     {
-        return Ok(_repository.GetMetrics());
+        if (skip < 0)
+        {
+            return BadRequest("Query parameter 'skip' must be >= 0.");
+        }
+
+        if (take <= 0 || take > 500)
+        {
+            return BadRequest("Query parameter 'take' must be in range 1..500.");
+        }
+
+        var items = await _repository.GetMetricsPageAsync(skip, take);
+
+        return Ok(items);
     }
 
     [HttpGet("{id}")]

@@ -11,7 +11,8 @@ public static class RabbitMqDI
 {
     public static void AddRabbitMqDependencies(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMq"));
+        services.Configure<RabbitMqOptions>(options =>
+            configuration.GetSection(nameof(RabbitMqOptions)).Bind(options));
 
         services.AddMassTransit(x =>
         {

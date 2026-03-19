@@ -11,7 +11,8 @@ namespace DataProccesor.Exstentions
     {
         public static void AddRabbitMQDependensies(this IServiceCollection services, IConfiguration configuration)
         {
-            services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMq"));
+            services.Configure<RabbitMqOptions>(options =>
+                configuration.GetSection(nameof(RabbitMqOptions)).Bind(options));
 
             services.AddMassTransit(x =>
             {

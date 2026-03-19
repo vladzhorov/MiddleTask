@@ -1,6 +1,7 @@
 using DataIngestorService.Services;
 using DataIngestorService.Services.Interfaces;
 using DataIngestorService.BackgroundJob;
+using DataIngestorService.Extensions;
 using MassTransit;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection; 
@@ -14,15 +15,12 @@ using FluentValidation;
 using Serilog;
 using DataIngestorService.Validators;
 
+var builder = Host.CreateApplicationBuilder();
+
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(new ConfigurationBuilder()
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        .AddEnvironmentVariables()
-        .Build())
+    .ReadFrom.Configuration(builder.Configuration)
     .WriteTo.Console()
     .CreateLogger();
-
-var builder = Host.CreateApplicationBuilder();
 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger, dispose: true);
@@ -31,8 +29,10 @@ var retryPolicy = HttpPolicyExtensions
     .HandleTransientHttpError()
     .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
 
-builder.Services.Configure<WeakApiOptions>(builder.Configuration.GetSection("WeakApi"));
-builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection("RabbitMq"));
+builder.Services.Configure<WeakApiOptions>(options =>
+    builder.Configuration.GetSection(nameof(WeakApiOptions)).Bind(options));
+builder.Services.Configure<RabbitMqOptions>(options =>
+    builder.Configuration.GetSection(nameof(RabbitMqOptions)).Bind(options));
 
 builder.Services.AddHttpClient<IWeakApiService, WeakApIService>((sp, client) =>
     {
@@ -70,28 +70,7 @@ builder.Services.AddMassTransit(x =>
     });
 });
 
-builder.Services.AddQuartz(quar =>
-{
-    var jobSection = builder.Configuration.GetSection("Quartz:FetchApiJob").Get<CronJobOptions>();
-
-    if (jobSection is null || string.IsNullOrWhiteSpace(jobSection.Schedule))
-    {
-        throw new InvalidOperationException("Quartz:FetchApiJob schedule is not configured.");
-    }
-
-    var jobKey = new JobKey(nameof(FetchApiJob));
-
-    quar.AddJob<FetchApiJob>(opts =>
-        opts.WithIdentity(jobKey)
-            .WithDescription(jobSection.Description ?? nameof(FetchApiJob)));
-
-    quar.AddTrigger(opts =>
-        opts.ForJob(jobKey)
-            .WithIdentity($"{nameof(FetchApiJob)}-trigger")
-            .WithCronSchedule(jobSection.Schedule));
-});
-
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+builder.Services.AddConfiguredQuartzScheduler(builder.Configuration);
 
 var host = builder.Build();
 await host.RunAsync();

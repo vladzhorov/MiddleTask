@@ -1,18 +1,14 @@
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Extensions.Configuration;
 using NotificationService.Extensions;
 using NotificationService.Hubs;
 using Serilog;
 
+var builder = WebApplication.CreateBuilder(args);
+
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(new ConfigurationBuilder()
-        .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-        .AddEnvironmentVariables()
-        .Build())
+    .ReadFrom.Configuration(builder.Configuration)
     .WriteTo.Console()
     .CreateLogger();
-
-var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog(Log.Logger, dispose: true);

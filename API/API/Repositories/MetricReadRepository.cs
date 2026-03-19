@@ -1,6 +1,7 @@
 using API.Models;
 using Core.Models;
 using MongoDB.Driver;
+using MongoDB.Driver.Linq;
 
 namespace API.Repositories;
 
@@ -14,6 +15,15 @@ public class MetricReadRepository : IMetricReadRepository
     public IQueryable<MetricDocument> GetMetrics()
     {
         return _collection.AsQueryable();
+    }
+
+    public async Task<IReadOnlyList<MetricDocument>> GetMetricsPageAsync(int skip, int take)
+    {
+        return await _collection.AsQueryable()
+            .OrderByDescending(x => x.CreatedAt)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
     }
 
     public async Task<MetricDocument?> GetByIdAsync(string id)
@@ -31,7 +41,7 @@ public class MetricReadRepository : IMetricReadRepository
                 {
                     Type = g.Key,
                     Count = g.Count(),
-                    AvgEnergy = g.Average(m => m.Payload.energy)
+                    AvgEnergy = g.Average(m => m.Payload == null ? 0 : m.Payload.energy)
                 });
 
         return await pipeline.ToListAsync();
